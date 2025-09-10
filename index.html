@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Rabbit Clicker — Happy</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#0f1730; --card:#111d3b; --muted:#9fb0d0; --accent:#1fa37c; --accent2:#2b6cb0;
+    --tab:#0f1730; --tabActive:#1b2a56;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:480px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .header{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border-radius:16px;padding:12px 14px}
+  .balance{font-weight:700;font-size:20px;display:flex;align-items:center;gap:8px}
+  .coin-img{width:22px;height:22px;object-fit:contain;vertical-align:middle}
+  .sub{font-size:12px;color:var(--muted)}
+
+  .tap{background:linear-gradient(180deg,#12254f,#0f1834);border-radius:16px;padding:16px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .tap-btn{
+    width:100%; aspect-ratio:1/1; border-radius:50%; overflow:hidden; border:0;
+    background:radial-gradient(100% 100% at 50% 35%,#1a2b5f 0%,#14224a 60%,#0f1834 100%);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none;
+    box-shadow:inset 0 6px 18px rgba(255,255,255,.06), 0 8px 22px rgba(0,0,0,.4);
+  }
+  .tap-btn:active{transform:scale(.98)}
+  .tap-btn img{width:88%; height:88%; object-fit:contain; display:block; pointer-events:none}
+  .tap-info{margin-top:10px;display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:8px;background:transparent}
+  .tab{
+    flex:1; text-align:center; padding:10px 12px; border-radius:12px; cursor:pointer; user-select:none;
+    background:var(--tab); color:#cfd9ff; font-weight:700; border:1px solid #1f2b56;
+  }
+  .tab.active{background:var(--tabActive); color:#fff; border-color:#2a3a6d; box-shadow:0 4px 16px rgba(0,0,0,.25) inset}
+  .views{margin-top:6px}
+  .view{display:none}
+  .view.active{display:block}
+
+  /* Заголовки секций внутри Еды */
+  .section{margin-top:10px}
+  .section h3{margin:6px 0 8px; font-size:15px; opacity:.9}
+
+  /* Карточки Еды (апгрейды) */
+  .store{display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--card);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center}
+  .icon-wrap{width:42px;height:42px;border-radius:10px;overflow:hidden;flex:0 0 42px;background:#0f1730;display:flex;align-items:center;justify-content:center}
+  .icon-wrap img{width:100%;height:100%;object-fit:contain}
+  .c-main{flex:1;min-width:0}
+  .c-title{font-weight:700;display:flex;align-items:center;gap:8px}
+  .lvl{font-size:11px;color:var(--muted);background:#152147;border-radius:999px;padding:2px 8px}
+  .c-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .mini{font-size:12px;color:var(--muted)}
+  .buy{background:var(--accent);border:none;color:#04151f;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer;min-width:124px}
+  .buy.blue{background:var(--accent2);color:#e8f1ff}
+  .buy:disabled{opacity:.5;cursor:not-allowed}
+
+  /* Карточки (одноразовые) */
+  .cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:6px}
+  .kcard{background:var(--card);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .kcard .pic{width:100%;aspect-ratio:1/1;background:#0f1730;display:flex;align-items:center;justify-content:center}
+  .kcard .pic img{width:100%;height:100%;object-fit:cover}
+  .kcard .body{padding:10px;display:flex;flex-direction:column;gap:6px}
+  .kcard .title{font-weight:700;font-size:14px}
+  .kcard .desc{font-size:12px;color:var(--muted);line-height:1.25}
+  .kcard .row{margin-top:2px}
+  .kcard .buy{width:100%}
+  .kcard .bought{opacity:.7;pointer-events:none}
+
+  .footer{margin-top:10px;text-align:center;color:var(--muted);font-size:12px}
+  .pill{display:inline-block;background:#152147;border-radius:999px;padding:2px 8px;margin-left:6px;font-size:11px;color:var(--muted)}
+  .reset{background:transparent;border:1px solid #2a3a6d;color:#8fa3d9;border-radius:10px;padding:8px 10px;cursor:pointer}
+</style>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <div class="balance">
+        <img id="coinIcon" class="coin-img" src="assets/ui/coin.png" alt="Happy">
+        <span id="balance">0</span> <span class="pill">Happy</span>
+      </div>
+      <div class="sub">в сек: <span id="hps">0</span> • за тап: <span id="perTap">0</span> • баф воды: <span id="waterBuff">0</span>%</div>
+    </div>
+    <button id="reset" class="reset" title="Сбросить прогресс">Сброс</button>
+  </div>
+
+  <div class="tap">
+    <button id="tapBtn" class="tap-btn" aria-label="Tap to get Happy">
+      <img id="rabbitImg" src="assets/ui/rabbit_main.png" alt="Rabbit"/>
+    </button>
+    <div class="tap-info">
+      <div>Тапай по кролику, чтобы фармить Happy</div>
+      <div>🙂 приятно!</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div id="tabFood" class="tab active">Еда</div>
+    <div id="tabCards" class="tab">Карточки</div>
+  </div>
+
+  <div class="views">
+    <!-- View: Еда -->
+    <div id="viewFood" class="view active">
+      <div id="foodRoot"></div>
+    </div>
+
+    <!-- View: Карточки -->
+    <div id="viewCards" class="view">
+      <div id="cardsRoot" class="cards-grid"></div>
+    </div>
+  </div>
+
+  <div class="footer">Сохраняется локально • Работает как Telegram Mini App</div>
+</div>
+
+<script>
+/* ===== Telegram UX ===== */
+const tg = window.Telegram?.WebApp;
+if (tg) { try { tg.expand(); } catch(e){} }
+function haptic(type='light'){ try{ tg?.HapticFeedback?.impactOccurred?.(type); }catch(e){} }
+
+/* Фолбэк для иконки монеты */
+const coinImg = document.getElementById('coinIcon');
+if (coinImg) {
+  coinImg.onerror = () => {
+    const span = document.createElement('span');
+    span.textContent = '🟡';
+    span.style.fontSize = '22px';
+    coinImg.replaceWith(span);
+  };
+}
+
+/* ===== Экономика (как согласовано) ===== */
+const base = { tapBase: 1 };
+
+const RARITY = {
+  common:      { hpsPerLvl: 1,   cost0: 30,      costK: 1.16 },
+  uncommon:    { hpsPerLvl: 2,   cost0: 300,     costK: 1.20 },
+  rare:        { hpsPerLvl: 5,   cost0: 2000,    costK: 1.24 },
+  epic:        { hpsPerLvl: 10,  cost0: 15000,   costK: 1.28 },
+  legendary:   { hpsPerLvl: 20,  cost0: 120000,  costK: 1.32 },
+};
+
+/* ЕДА — разделы и позиции */
+const FOOD_SECTIONS = [
+  {
+    title: "База",
+    items: [
+      { key:"base_hay", name:"Сено",  icon:"assets/items/base_hay.png",  type:"hps",
+        rarity:"common", override:{ cost0: 15, costK: 1.18, hpsPerLvl:1 } },
+      { key:"base_water", name:"Вода", icon:"assets/items/base_water.png", type:"mult",
+        multPerLvl: null, /* ступенчатый множитель ниже */ override:{ cost0: 400, costK: 1.32 } },
+      { key:"base_feed", name:"Корм", icon:"assets/items/base_feed.png", type:"tap_add",
+        tapAddPerLvl:1, rarity:"uncommon", override:{ cost0: 300, costK: 1.24 } }
+    ]
+  },
+  {
+    title: "Зеленушка",
+    items: [
+      { key:"greens_salad",   name:"Салат «Выборжец»", icon:"assets/items/greens_salad.png",   type:"hps", rarity:"common"   },
+      { key:"greens_dill",    name:"Укроп",            icon:"assets/items/greens_dill.png",    type:"hps", rarity:"common"   },
+      { key:"greens_parsley", name:"Петрушка",         icon:"assets/items/greens_parsley.png", type:"hps", rarity:"uncommon" },
+      { key:"greens_basil",   name:"Базилик",          icon:"assets/items/greens_basil.png",   type:"hps", rarity:"rare"     },
+      { key:"greens_mint",    name:"Мята",             icon:"assets/items/greens_mint.png",    type:"hps", rarity:"uncommon" },
+      { key:"greens_broccoli",name:"Брокколи",         icon:"assets/items/greens_broccoli.png",type:"hps", rarity:"rare"     },
+    ]
+  },
+  {
+    title: "Овощи",
+    items: [
+      { key:"veg_carrot",     name:"Морковь",          icon:"assets/items/veg_carrot.png",     type:"hps", rarity:"common"   },
+      { key:"veg_celery",     name:"Сельдерей",        icon:"assets/items/veg_celery.png",     type:"hps", rarity:"uncommon" },
+      { key:"veg_cucumber",   name:"Огурец",           icon:"assets/items/veg_cucumber.png",   type:"hps", rarity:"common"   },
+      { key:"veg_pepper",     name:"Болгарский перец", icon:"assets/items/veg_pepper.png",     type:"hps", rarity:"rare"     },
+    ]
+  },
+  {
+    title: "Фрукты",
+    items: [
+      { key:"fruit_apple",    name:"Яблоки",   icon:"assets/items/fruit_apple.png",    type:"hps", rarity:"common"   },
+      { key:"fruit_pear",     name:"Груша",    icon:"assets/items/fruit_pear.png",     type:"hps", rarity:"uncommon" },
+      { key:"fruit_apricot",  name:"Абрикосы", icon:"assets/items/fruit_apricot.png",  type:"hps", rarity:"rare"     },
+    ]
+  },
+  {
+    title: "Ягоды",
+    items: [
+      { key:"berry_currant",   name:"Чёрная смородина", icon:"assets/items/berry_currant.png",   type:"hps", rarity:"rare"     },
+      { key:"berry_raspberry", name:"Малина",            icon:"assets/items/berry_raspberry.png", type:"hps", rarity:"uncommon" },
+      { key:"berry_blackberry",name:"Ежевика",           icon:"assets/items/berry_blackberry.png",type:"hps", rarity:"rare"     },
+      { key:"berry_gooseberry",name:"Крыжовник",         icon:"assets/items/berry_gooseberry.png",type:"hps", rarity:"uncommon" },
+    ]
+  },
+];
+
+/* КАРТОЧКИ — разовые покупки (+1 к доходу за тап, суммируются, множатся «Водой») */
+const CARDS = [
+  {
+    key: "card_nails",
+    name: "Подстриженные ноготочки",
+    icon: "assets/cards/card_nails.png",
+    desc: "Красивые ноготочки — это не только про красоту и уход за собой",
+    cost: 5000,
+    tapBonus: 1,
+  },
+];
+
+/* ===== Состояние/элементы ===== */
+const els = {
+  balance: document.getElementById('balance'),
+  hps: document.getElementById('hps'),
+  perTap: document.getElementById('perTap'),
+  waterBuff: document.getElementById('waterBuff'),
+  tapBtn: document.getElementById('tapBtn'),
+  reset: document.getElementById('reset'),
+  foodRoot: document.getElementById('foodRoot'),
+  cardsRoot: document.getElementById('cardsRoot'),
+  tabFood: document.getElementById('tabFood'),
+  tabCards: document.getElementById('tabCards'),
+  viewFood: document.getElementById('viewFood'),
+  viewCards: document.getElementById('viewCards'),
+};
+
+const storeKey = 'rabbit_clicker_tabs_food_cards';
+let S = load() || makeFreshState();
+
+/* ===== Save/Load ===== */
+function makeFreshState(){
+  const levels = {};
+  for (const sec of FOOD_SECTIONS) for (const it of sec.items) levels[it.key] = 0;
+  const cards = {};
+  for (const c of CARDS) cards[c.key] = false;
+  return { happy: 0, last: Date.now(), levels, cards };
+}
+function save(){ localStorage.setItem(storeKey, JSON.stringify(S)); }
+function load(){ try{ return JSON.parse(localStorage.getItem(storeKey)||''); }catch(e){ return null; } }
+
+/* Utils */
+function fmt(n){
+  if (n < 1000) return Math.floor(n).toString();
+  const units = ['K','M','B','T','Q'];
+  let u = -1, v = n;
+  while (v >= 1000 && u < units.length-1){ v/=1000; u++; }
+  return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,'') + units[u];
+}
+function getLevel(key){ return S.levels[key] || 0; }
+function setLevel(key, lvl){ S.levels[key] = lvl; }
+function isCardBought(key){ return !!S.cards[key]; }
+function setCardBought(key, val){ S.cards[key] = !!val; }
+
+function itemCost0(item){ return item.override?.cost0 ?? RARITY[item.rarity].cost0; }
+function itemBaseCostK(item){ return item.override?.costK ?? RARITY[item.rarity].costK; }
+function itemHpsPerLvl(item){ if (item.type!=='hps') return 0; return item.override?.hpsPerLvl ?? RARITY[item.rarity].hpsPerLvl; }
+
+/* Динамический рост стоимости: каждые 10 уровней +0.01 к costK */
+function costKAt(item, lvlIndex){
+  const baseK = itemBaseCostK(item);
+  const bump = Math.floor(lvlIndex/10) * 0.01;
+  return baseK + bump;
+}
+function nextPrice(item, currentLvl){
+  let price = itemCost0(item);
+  for (let i=0;i<currentLvl;i++) price *= costKAt(item,i);
+  return Math.floor(price);
+}
+
+/* Убывающая отдача уровней */
+function effLevel(lvl){
+  if (lvl <= 25) return lvl;
+  if (lvl <= 100) return 25 + Math.pow(lvl-25, 0.85);
+  return 25 + Math.pow(75,0.85) + Math.pow(lvl-100, 0.75);
+}
+
+/* Вода: ×1.12 / ×1.07 / ×1.04 */
+function waterMult(){
+  const lvl = getLevel('base_water');
+  const a = Math.min(lvl, 10);
+  const b = Math.min(Math.max(lvl-10,0), 10);
+  const c = Math.max(lvl-20, 0);
+  return Math.pow(1.12, a) * Math.pow(1.07, b) * Math.pow(1.04, c);
+}
+
+/* Корм → целочисленный вклад к тапу */
+function tapAddFromFeed(){
+  const feed = FOOD_SECTIONS[0].items.find(i=>i.key==='base_feed');
+  const perLvl = (feed?.tapAddPerLvl)||1;
+  const lvl = getLevel('base_feed');
+  const raw = perLvl * effLevel(lvl);
+  return Math.floor(raw);
+}
+
+/* Карточки → суммарный бонус к тапу */
+function cardsTapBonus(){
+  let sum = 0;
+  for (const c of CARDS) if (isCardBought(c.key)) sum += (c.tapBonus||0);
+  return sum;
+}
+
+/* Доход за тап (база + корм + карточки) * вода */
+function perTap(){
+  const baseSum = base.tapBase + tapAddFromFeed() + cardsTapBonus();
+  const raw = baseSum * waterMult();
+  return Math.max(1, Math.floor(raw));
+}
+
+/* Пассивка → сумма по «hps» позициям * вода */
+function totalHps(){
+  let total = 0;
+  for (const sec of FOOD_SECTIONS){
+    for (const it of sec.items){
+      if (it.type === 'hps'){
+        const lvl = getLevel(it.key);
+        const raw = itemHpsPerLvl(it) * effLevel(lvl);
+        total += Math.floor(raw);
+      }
+    }
+  }
+  return Math.floor(total * waterMult());
+}
+
+/* Offline кап: 2 часа */
+(function offlineGain(){
+  const now = Date.now();
+  const dt = Math.max(0, (now - (S.last||now))/1000);
+  const capped = Math.min(dt, 2*3600);
+  const gain = totalHps() * capped;
+  if (gain > 0) S.happy += gain;
+  S.last = now;
+})();
+
+/* ===== Рендер ЕДЫ ===== */
+function makeFoodItemCard(item){
+  const lvl = getLevel(item.key);
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const icon = document.createElement('div');
+  icon.className = 'icon-wrap';
+  const img = document.createElement('img');
+  img.src = item.icon;
+  img.alt = item.name;
+  icon.appendChild(img);
+
+  const main = document.createElement('div');
+  main.className = 'c-main';
+
+  const title = document.createElement('div');
+  title.className = 'c-title';
+  title.innerHTML = `${item.name} <span class="lvl">ур. <span data-lvl="${item.key}">${lvl}</span></span>`;
+
+  const sub = document.createElement('div');
+  sub.className = 'c-sub';
+  if (item.type === 'hps'){
+    const inc = Math.floor(itemHpsPerLvl(item) * waterMult());
+    sub.textContent = `Пассивный доход: +${inc} Happy/сек за ур. (с убывающей отдачей)`;
+  } else if (item.type === 'mult'){
+    sub.textContent = `Вода: сильнее в начале, слабее позже`;
+  } else if (item.type === 'tap_add'){
+    const add = Math.floor(((item.tapAddPerLvl||1) * waterMult()));
+    sub.textContent = `Доход с тапа: +${add} за ур. (с убывающей отдачей)`;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const mini = document.createElement('div');
+  mini.className = 'mini';
+  mini.innerHTML = renderFoodMini(item);
+
+  const btn = document.createElement('button');
+  btn.className = 'buy' + (item.type==='mult' ? ' blue' : '');
+  btn.textContent = 'Купить';
+  btn.dataset.key = item.key;
+
+  row.appendChild(mini);
+  row.appendChild(btn);
+
+  main.appendChild(title);
+  main.appendChild(sub);
+  main.appendChild(row);
+
+  card.appendChild(icon);
+  card.appendChild(main);
+  return card;
+}
+
+function renderFoodMini(item){
+  const lvl = getLevel(item.key);
+  const price = nextPrice(item, lvl);
+  if (item.type === 'hps'){
+    const inc = Math.floor(itemHpsPerLvl(item) * waterMult());
+    return `+${inc}/сек за ур. • цена: 🟡 ${fmt(price)}`;
+  } else if (item.type === 'mult'){
+    const mult = waterMult();
+    const buff = (mult-1)*100;
+    return `баф сейчас: ${Math.floor(buff)}% • цена: 🟡 ${fmt(price)}`;
+  } else if (item.type === 'tap_add'){
+    const add = Math.floor(((item.tapAddPerLvl||1) * waterMult()));
+    return `+${add} за тап/ур. • цена: 🟡 ${fmt(price)}`;
+  }
+  return `цена: 🟡 ${fmt(price)}`;
+}
+
+function renderFood(){
+  els.foodRoot.innerHTML = '';
+  // рисуем все подразделы внутри вкладки "Еда"
+  for (const sec of FOOD_SECTIONS){
+    const box = document.createElement('div');
+    box.className = 'section';
+    const h = document.createElement('h3');
+    h.textContent = sec.title;
+    box.appendChild(h);
+
+    const container = document.createElement('div');
+    container.className = 'store';
+    for (const it of sec.items){
+      container.appendChild( makeFoodItemCard(it) );
+    }
+    box.appendChild(container);
+    els.foodRoot.appendChild(box);
+  }
+
+  // обработчики покупки
+  els.foodRoot.querySelectorAll('.buy').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key;
+      let item = null;
+      for (const sec of FOOD_SECTIONS){ item = sec.items.find(i=>i.key===key) || item; }
+      if (!item) return;
+      const lvl = getLevel(key);
+      const price = nextPrice(item, lvl);
+      if (S.happy >= price){
+        S.happy -= price;
+        setLevel(key, lvl+1);
+        haptic('medium');
+        updateUI(); save();
+      }
+    });
+  });
+}
+
+/* ===== Рендер КАРТОЧЕК ===== */
+function renderCards(){
+  els.cardsRoot.innerHTML = '';
+  for (const c of CARDS){
+    const card = document.createElement('div');
+    card.className = 'kcard';
+
+    const pic = document.createElement('div');
+    pic.className = 'pic';
+    const img = document.createElement('img');
+    img.src = c.icon;
+    img.alt = c.name;
+    pic.appendChild(img);
+
+    const body = document.createElement('div');
+    body.className = 'body';
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = c.name;
+
+    const desc = document.createElement('div');
+    desc.className = 'desc';
+    desc.textContent = c.desc;
+
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const mini = document.createElement('div');
+    mini.className = 'mini';
+    mini.innerHTML = `+${c.tapBonus} за тап • цена: 🟡 ${fmt(c.cost)}`;
+
+    const btn = document.createElement('button');
+    btn.className = 'buy';
+    btn.textContent = isCardBought(c.key) ? 'Куплено' : 'Купить';
+    btn.disabled = isCardBought(c.key);
+    btn.dataset.key = c.key;
+
+    row.appendChild(mini);
+    row.appendChild(btn);
+
+    body.appendChild(title);
+    body.appendChild(desc);
+    body.appendChild(row);
+
+    card.appendChild(pic);
+    card.appendChild(body);
+    els.cardsRoot.appendChild(card);
+  }
+
+  // покупка карточек
+  els.cardsRoot.querySelectorAll('.buy').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key;
+      const c = CARDS.find(x=>x.key===key);
+      if (!c) return;
+      if (isCardBought(key)) return;
+      if (S.happy >= c.cost){
+        S.happy -= c.cost;
+        setCardBought(key, true);
+        haptic('medium');
+        updateUI(); save();
+      }
+    });
+  });
+}
+
+/* ===== Tabs ===== */
+function setActiveTab(name){
+  const isFood = name === 'food';
+  els.tabFood.classList.toggle('active', isFood);
+  els.tabCards.classList.toggle('active', !isFood);
+  els.viewFood.classList.toggle('active', isFood);
+  els.viewCards.classList.toggle('active', !isFood);
+  localStorage.setItem('rc_active_tab2', isFood ? 'food' : 'cards');
+}
+els.tabFood.addEventListener('click', ()=> setActiveTab('food'));
+els.tabCards.addEventListener('click', ()=> setActiveTab('cards'));
+
+/* ===== Основной рендер ===== */
+function updateHeader(){
+  els.balance.textContent = fmt(S.happy);
+  els.hps.textContent = totalHps();         // целое
+  els.perTap.textContent = perTap();        // целое
+  els.waterBuff.textContent = Math.floor((waterMult()-1)*100);
+}
+function updateFoodRows(){
+  // уровни
+  for (const sec of FOOD_SECTIONS) for (const it of sec.items){
+    const sp = document.querySelector(`[data-lvl="${it.key}"]`);
+    if (sp) sp.textContent = getLevel(it.key);
+  }
+  // мини и доступность
+  for (const sec of FOOD_SECTIONS) for (const it of sec.items){
+    const cards = Array.from(els.foodRoot.querySelectorAll('.card'));
+    const card = cards.find(c=>{
+      const t = c.querySelector('.c-title')?.textContent||'';
+      return t.includes(it.name);
+    });
+    if (!card) continue;
+    const mini = card.querySelector('.mini');
+    if (mini) mini.innerHTML = renderFoodMini(it);
+    const btn = card.querySelector('.buy');
+    if (btn){
+      const price = nextPrice(it, getLevel(it.key));
+      btn.disabled = S.happy < price;
+    }
+  }
+}
+function updateCardsRows(){
+  els.cardsRoot.querySelectorAll('.kcard').forEach((node, idx)=>{
+    const c = CARDS[idx];
+    const btn = node.querySelector('.buy');
+    const mini = node.querySelector('.mini');
+    if (mini) mini.innerHTML = `+${c.tapBonus} за тап • цена: 🟡 ${fmt(c.cost)}`;
+    if (btn){
+      const bought = isCardBought(c.key);
+      btn.textContent = bought ? 'Куплено' : 'Купить';
+      btn.disabled = bought || S.happy < c.cost;
+      node.classList.toggle('bought', bought);
+    }
+  });
+}
+function updateUI(){
+  updateHeader();
+  updateFoodRows();
+  updateCardsRows();
+}
+
+/* ===== Тик ===== */
+let acc = 0, lastTs = performance.now();
+function loop(ts){
+  const dt = (ts - lastTs)/1000; lastTs = ts;
+  acc += dt;
+  const step = 0.1;
+  while (acc >= step){
+    S.happy += totalHps() * step;
+    acc -= step;
+  }
+  if (Math.random() < 0.02){ S.last = Date.now(); save(); }
+  updateUI();
+  requestAnimationFrame(loop);
+}
+
+/* ===== События ===== */
+els.tapBtn.addEventListener('click', ()=>{
+  const gain = perTap();
+  S.happy += gain;
+  popText(els.tapBtn, `+${gain}`);
+  haptic('light');
+  updateUI();
+});
+
+els.reset.addEventListener('click', ()=>{
+  if (!confirm('Точно сбросить прогресс?')) return;
+  S = makeFreshState();
+  save();
+  renderFood();
+  renderCards();
+  updateUI();
+});
+
+/* Всплывашка */
+function popText(anchorEl, text){
+  const r = anchorEl.getBoundingClientRect();
+  const b = document.createElement('div');
+  b.textContent = text;
+  b.style.position='fixed';
+  b.style.left = (r.left + r.width/2) + 'px';
+  b.style.top  = (r.top + r.height/2) + 'px';
+  b.style.transform='translate(-50%,-50%)';
+  b.style.pointerEvents='none';
+  b.style.color='#fff';
+  b.style.textShadow='0 2px 10px rgba(0,0,0,.6)';
+  b.style.fontWeight='700';
+  b.style.transition='all .6s ease';
+  document.body.appendChild(b);
+  requestAnimationFrame(()=>{
+    b.style.top = (r.top - 30) + 'px';
+    b.style.opacity = '0';
+    b.style.scale = '1.2';
+  });
+  setTimeout(()=> b.remove(), 650);
+}
+
+/* ===== Старт ===== */
+renderFood();
+renderCards();
+updateUI();
+const savedTab = localStorage.getItem('rc_active_tab2');
+setActiveTab(savedTab === 'cards' ? 'cards' : 'food');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
