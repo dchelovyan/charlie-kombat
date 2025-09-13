@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Rabbit Clicker — Happy</title>
+<title>RabbitCoin clicker</title>
 <style>
   :root{
     --bg:#0b1220; --panel:#0f1730; --card:#111d3b; --muted:#9fb0d0; --accent:#1fa37c; --accent2:#2b6cb0;
@@ -40,11 +40,9 @@
   .view{display:none}
   .view.active{display:block}
 
-  /* Заголовки секций внутри Еды */
+  /* Еда */
   .section{margin-top:10px}
   .section h3{margin:6px 0 8px; font-size:15px; opacity:.9}
-
-  /* Карточки Еды (апгрейды) */
   .store{display:flex;flex-direction:column;gap:10px}
   .card{background:var(--card);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center}
   .icon-wrap{width:42px;height:42px;border-radius:10px;overflow:hidden;flex:0 0 42px;background:#0f1730;display:flex;align-items:center;justify-content:center}
@@ -59,7 +57,7 @@
   .buy.blue{background:var(--accent2);color:#e8f1ff}
   .buy:disabled{opacity:.5;cursor:not-allowed}
 
-  /* Карточки (одноразовые) */
+  /* Карточки */
   .cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:6px}
   .kcard{background:var(--card);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
   .kcard .pic{width:100%;aspect-ratio:1/1;background:#0f1730;display:flex;align-items:center;justify-content:center}
@@ -69,11 +67,10 @@
   .kcard .desc{font-size:12px;color:var(--muted);line-height:1.25}
   .kcard .row{margin-top:2px}
   .kcard .buy{width:100%}
-  .kcard .bought{opacity:.7;pointer-events:none}
+  .kcard.bought{opacity:.7;pointer-events:none}
 
   .footer{margin-top:10px;text-align:center;color:var(--muted);font-size:12px}
   .pill{display:inline-block;background:#152147;border-radius:999px;padding:2px 8px;margin-left:6px;font-size:11px;color:var(--muted)}
-  .reset{background:transparent;border:1px solid #2a3a6d;color:#8fa3d9;border-radius:10px;padding:8px 10px;cursor:pointer}
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -82,22 +79,18 @@
   <div class="header">
     <div>
       <div class="balance">
-        <img id="coinIcon" class="coin-img" src="assets/ui/coin.png" alt="Happy">
-        <span id="balance">0</span> <span class="pill">Happy</span>
+        <img id="coinIcon" class="coin-img" src="assets/ui/coin.png" alt="RabbitCoin">
+        <span id="balance">0</span> <span class="pill">RabbitCoin</span>
       </div>
       <div class="sub">в сек: <span id="hps">0</span> • за тап: <span id="perTap">0</span> • баф воды: <span id="waterBuff">0</span>%</div>
     </div>
-    <button id="reset" class="reset" title="Сбросить прогресс">Сброс</button>
   </div>
 
   <div class="tap">
-    <button id="tapBtn" class="tap-btn" aria-label="Tap to get Happy">
+    <button id="tapBtn" class="tap-btn" aria-label="Tap to get RabbitCoin">
       <img id="rabbitImg" src="assets/ui/rabbit_main.png" alt="Rabbit"/>
     </button>
-    <div class="tap-info">
-      <div>Тапай по кролику, чтобы фармить Happy</div>
-      <div>🙂 приятно!</div>
-    </div>
+    <div class="tap-info"><div>Тапай по кролику, чтобы фармить RabbitCoin</div></div>
   </div>
 
   <!-- Tabs -->
@@ -107,15 +100,8 @@
   </div>
 
   <div class="views">
-    <!-- View: Еда -->
-    <div id="viewFood" class="view active">
-      <div id="foodRoot"></div>
-    </div>
-
-    <!-- View: Карточки -->
-    <div id="viewCards" class="view">
-      <div id="cardsRoot" class="cards-grid"></div>
-    </div>
+    <div id="viewFood" class="view active"><div id="foodRoot"></div></div>
+    <div id="viewCards" class="view"><div id="cardsRoot" class="cards-grid"></div></div>
   </div>
 
   <div class="footer">Сохраняется локально • Работает как Telegram Mini App</div>
@@ -127,7 +113,7 @@ const tg = window.Telegram?.WebApp;
 if (tg) { try { tg.expand(); } catch(e){} }
 function haptic(type='light'){ try{ tg?.HapticFeedback?.impactOccurred?.(type); }catch(e){} }
 
-/* Фолбэк для иконки монеты */
+/* Иконка монеты — фолбэк */
 const coinImg = document.getElementById('coinIcon');
 if (coinImg) {
   coinImg.onerror = () => {
@@ -138,7 +124,7 @@ if (coinImg) {
   };
 }
 
-/* ===== Экономика (как согласовано) ===== */
+/* ===== Экономика ===== */
 const base = { tapBase: 1 };
 
 const RARITY = {
@@ -149,7 +135,7 @@ const RARITY = {
   legendary:   { hpsPerLvl: 20,  cost0: 120000,  costK: 1.32 },
 };
 
-/* ЕДА — разделы и позиции */
+/* ЕДА */
 const FOOD_SECTIONS = [
   {
     title: "База",
@@ -157,70 +143,124 @@ const FOOD_SECTIONS = [
       { key:"base_hay", name:"Сено",  icon:"assets/items/base_hay.png",  type:"hps",
         rarity:"common", override:{ cost0: 15, costK: 1.18, hpsPerLvl:1 } },
       { key:"base_water", name:"Вода", icon:"assets/items/base_water.png", type:"mult",
-        multPerLvl: null, /* ступенчатый множитель ниже */ override:{ cost0: 400, costK: 1.32 } },
+        multPerLvl: null, override:{ cost0: 400, costK: 1.32 } },
       { key:"base_feed", name:"Корм", icon:"assets/items/base_feed.png", type:"tap_add",
         tapAddPerLvl:1, rarity:"uncommon", override:{ cost0: 300, costK: 1.24 } }
     ]
   },
-  {
-    title: "Зеленушка",
-    items: [
+  { title: "Зеленушка", items: [
       { key:"greens_salad",   name:"Салат «Выборжец»", icon:"assets/items/greens_salad.png",   type:"hps", rarity:"common"   },
       { key:"greens_dill",    name:"Укроп",            icon:"assets/items/greens_dill.png",    type:"hps", rarity:"common"   },
       { key:"greens_parsley", name:"Петрушка",         icon:"assets/items/greens_parsley.png", type:"hps", rarity:"uncommon" },
       { key:"greens_basil",   name:"Базилик",          icon:"assets/items/greens_basil.png",   type:"hps", rarity:"rare"     },
       { key:"greens_mint",    name:"Мята",             icon:"assets/items/greens_mint.png",    type:"hps", rarity:"uncommon" },
       { key:"greens_broccoli",name:"Брокколи",         icon:"assets/items/greens_broccoli.png",type:"hps", rarity:"rare"     },
-    ]
-  },
-  {
-    title: "Овощи",
-    items: [
+  ]},
+  { title: "Овощи", items: [
       { key:"veg_carrot",     name:"Морковь",          icon:"assets/items/veg_carrot.png",     type:"hps", rarity:"common"   },
       { key:"veg_celery",     name:"Сельдерей",        icon:"assets/items/veg_celery.png",     type:"hps", rarity:"uncommon" },
       { key:"veg_cucumber",   name:"Огурец",           icon:"assets/items/veg_cucumber.png",   type:"hps", rarity:"common"   },
       { key:"veg_pepper",     name:"Болгарский перец", icon:"assets/items/veg_pepper.png",     type:"hps", rarity:"rare"     },
-    ]
-  },
-  {
-    title: "Фрукты",
-    items: [
+  ]},
+  { title: "Фрукты", items: [
       { key:"fruit_apple",    name:"Яблоки",   icon:"assets/items/fruit_apple.png",    type:"hps", rarity:"common"   },
       { key:"fruit_pear",     name:"Груша",    icon:"assets/items/fruit_pear.png",     type:"hps", rarity:"uncommon" },
       { key:"fruit_apricot",  name:"Абрикосы", icon:"assets/items/fruit_apricot.png",  type:"hps", rarity:"rare"     },
-    ]
-  },
-  {
-    title: "Ягоды",
-    items: [
+  ]},
+  { title: "Ягоды", items: [
       { key:"berry_currant",   name:"Чёрная смородина", icon:"assets/items/berry_currant.png",   type:"hps", rarity:"rare"     },
       { key:"berry_raspberry", name:"Малина",            icon:"assets/items/berry_raspberry.png", type:"hps", rarity:"uncommon" },
       { key:"berry_blackberry",name:"Ежевика",           icon:"assets/items/berry_blackberry.png",type:"hps", rarity:"rare"     },
       { key:"berry_gooseberry",name:"Крыжовник",         icon:"assets/items/berry_gooseberry.png",type:"hps", rarity:"uncommon" },
-    ]
-  },
+  ]},
 ];
 
-/* КАРТОЧКИ — разовые покупки (+1 к доходу за тап, суммируются, множатся «Водой») */
+/* КАРТОЧКИ — разовые */
 const CARDS = [
   {
     key: "card_nails",
-    name: "Подстриженные ноготочки",
+    name: "Подстриженные коготочки",
     icon: "assets/cards/card_nails.png",
-    desc: "Красивые ноготочки — это не только про красоту и уход за собой",
+    desc: "Красивые коготочки — это не только про красоту и уход за собой",
     cost: 5000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_castration",
+    name: "Кастрация",
+    icon: "assets/cards/card_castration.png",
+    desc: "Родители сказали, что так будет лучше...",
+    cost: 10000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_vaccination",
+    name: "Вакцинация",
+    icon: "assets/cards/card_vaccination.png",
+    desc: "Чтобы побеждать, нужно всегда быть на пару шагов впереди",
+    cost: 20000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_checkup",
+    name: "Полный чекап",
+    icon: "assets/cards/card_checkup.png",
+    desc: "Расчехляем кошельки",
+    cost: 40000,
+    tapBonus: 1,
+  },
+
+  /* новые */
+  {
+    key: "card_pp",
+    name: "Переход на ПП",
+    icon: "assets/cards/card_pp.png",
+    desc: "В здоровом теле - здоровый дух!",
+    cost: 80000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_shedding",
+    name: "Борьба с линькой",
+    icon: "assets/cards/card_shedding.png",
+    desc: "Вычесать шерсть",
+    cost: 160000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_passport",
+    name: "Сделать заграничный паспорт",
+    icon: "assets/cards/card_passport.png",
+    desc: "Каждый уважающий себя кролик должен путешествовать",
+    cost: 320000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_companion",
+    name: "Обзавестись сородичем",
+    icon: "assets/cards/card_companion.png",
+    desc: "Мне нужен тот, кто всегда меня поймет",
+    cost: 640000,
+    tapBonus: 1,
+  },
+  {
+    key: "card_move_abroad",
+    name: "Переехать заграницу",
+    icon: "assets/cards/card_move_abroad.png",
+    desc: "Я устал от предков...",
+    cost: 1280000,
     tapBonus: 1,
   },
 ];
 
-/* ===== Состояние/элементы ===== */
+
+/* ===== DOM-элементы ===== */
 const els = {
   balance: document.getElementById('balance'),
   hps: document.getElementById('hps'),
   perTap: document.getElementById('perTap'),
   waterBuff: document.getElementById('waterBuff'),
   tapBtn: document.getElementById('tapBtn'),
-  reset: document.getElementById('reset'),
   foodRoot: document.getElementById('foodRoot'),
   cardsRoot: document.getElementById('cardsRoot'),
   tabFood: document.getElementById('tabFood'),
@@ -229,406 +269,273 @@ const els = {
   viewCards: document.getElementById('viewCards'),
 };
 
+/* ===== Надёжная загрузка с миграцией ===== */
 const storeKey = 'rabbit_clicker_tabs_food_cards';
-let S = load() || makeFreshState();
+const legacyKeys = ['rabbit_clicker_v2','rabbit_clicker_tabs_food','rabbit_clicker_v1'];
 
-/* ===== Save/Load ===== */
 function makeFreshState(){
   const levels = {};
   for (const sec of FOOD_SECTIONS) for (const it of sec.items) levels[it.key] = 0;
   const cards = {};
   for (const c of CARDS) cards[c.key] = false;
-  return { happy: 0, last: Date.now(), levels, cards };
+  return { RabbitCoin: 0, last: Date.now(), levels, cards };
 }
-function save(){ localStorage.setItem(storeKey, JSON.stringify(S)); }
-function load(){ try{ return JSON.parse(localStorage.getItem(storeKey)||''); }catch(e){ return null; } }
+function safeParse(j){ try{ return JSON.parse(j); }catch{ return null; } }
+function ensureShape(S){
+  const t = (S && typeof S==='object') ? S : {};
+  if (typeof t.RabbitCoin!=='number') t.RabbitCoin = 0;
+  if (typeof t.last!=='number') t.last = Date.now();
+  if (!t.levels || typeof t.levels!=='object') t.levels = {};
+  for (const sec of FOOD_SECTIONS) for (const it of sec.items)
+    if (typeof t.levels[it.key]!=='number') t.levels[it.key]=0;
+  if (!t.cards || typeof t.cards!=='object') t.cards = {};
+  for (const c of CARDS)
+    if (typeof t.cards[c.key]!=='boolean') t.cards[c.key]=false;
+  return t;
+}
+function migrateFrom(old){
+  const fresh = makeFreshState();
+  if (!old || typeof old!=='object') return fresh;
+  fresh.RabbitCoin = Number(old.RabbitCoin ?? old.happy ?? 0);
+  fresh.last = Number(old.last ?? Date.now());
+  const srcL = old.levels || {};
+  for (const k in srcL){
+    if (fresh.levels.hasOwnProperty(k)) fresh.levels[k] = Number(srcL[k]||0);
+  }
+  const srcC = old.cards || {};
+  for (const k in srcC){
+    if (fresh.cards.hasOwnProperty(k)) fresh.cards[k] = !!srcC[k];
+  }
+  return fresh;
+}
+function loadOrInit(){
+  const raw = localStorage.getItem(storeKey);
+  if (raw) return ensureShape(safeParse(raw)) || makeFreshState();
+  for (const key of legacyKeys){
+    const r = localStorage.getItem(key);
+    if (r){
+      const migrated = ensureShape(migrateFrom(safeParse(r)));
+      localStorage.setItem(storeKey, JSON.stringify(migrated));
+      return migrated;
+    }
+  }
+  return makeFreshState();
+}
+let S = loadOrInit();
+function save(){ try{ localStorage.setItem(storeKey, JSON.stringify(S)); }catch{} }
 
-/* Utils */
+/* ===== Утилиты ===== */
 function fmt(n){
   if (n < 1000) return Math.floor(n).toString();
   const units = ['K','M','B','T','Q'];
-  let u = -1, v = n;
-  while (v >= 1000 && u < units.length-1){ v/=1000; u++; }
-  return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,'') + units[u];
+  let u=-1, v=n;
+  while (v>=1000 && u<units.length-1){ v/=1000; u++; }
+  return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,'')+units[u];
 }
-function getLevel(key){ return S.levels[key] || 0; }
-function setLevel(key, lvl){ S.levels[key] = lvl; }
+function getLevel(key){ return S.levels[key]||0; }
+function setLevel(key,lvl){ S.levels[key]=lvl; }
 function isCardBought(key){ return !!S.cards[key]; }
-function setCardBought(key, val){ S.cards[key] = !!val; }
+function setCardBought(key,val){ S.cards[key]=!!val; }
 
 function itemCost0(item){ return item.override?.cost0 ?? RARITY[item.rarity].cost0; }
 function itemBaseCostK(item){ return item.override?.costK ?? RARITY[item.rarity].costK; }
-function itemHpsPerLvl(item){ if (item.type!=='hps') return 0; return item.override?.hpsPerLvl ?? RARITY[item.rarity].hpsPerLvl; }
+function itemHpsPerLvl(item){ return item.type==='hps' ? (item.override?.hpsPerLvl ?? RARITY[item.rarity].hpsPerLvl) : 0; }
 
-/* Динамический рост стоимости: каждые 10 уровней +0.01 к costK */
-function costKAt(item, lvlIndex){
-  const baseK = itemBaseCostK(item);
-  const bump = Math.floor(lvlIndex/10) * 0.01;
-  return baseK + bump;
-}
-function nextPrice(item, currentLvl){
-  let price = itemCost0(item);
-  for (let i=0;i<currentLvl;i++) price *= costKAt(item,i);
-  return Math.floor(price);
-}
+/* Стоимость: каждые 10 уровней +0.01 к K */
+function costKAt(item, idx){ return itemBaseCostK(item) + Math.floor(idx/10)*0.01; }
+function nextPrice(item, lvl){ let p=itemCost0(item); for(let i=0;i<lvl;i++) p*=costKAt(item,i); return Math.floor(p); }
 
 /* Убывающая отдача уровней */
 function effLevel(lvl){
-  if (lvl <= 25) return lvl;
-  if (lvl <= 100) return 25 + Math.pow(lvl-25, 0.85);
-  return 25 + Math.pow(75,0.85) + Math.pow(lvl-100, 0.75);
+  if (lvl<=25) return lvl;
+  if (lvl<=100) return 25 + Math.pow(lvl-25,0.85);
+  return 25 + Math.pow(75,0.85) + Math.pow(lvl-100,0.75);
 }
 
-/* Вода: ×1.12 / ×1.07 / ×1.04 */
+/* Вода — ступени */
 function waterMult(){
-  const lvl = getLevel('base_water');
-  const a = Math.min(lvl, 10);
-  const b = Math.min(Math.max(lvl-10,0), 10);
-  const c = Math.max(lvl-20, 0);
-  return Math.pow(1.12, a) * Math.pow(1.07, b) * Math.pow(1.04, c);
+  const lvl=getLevel('base_water');
+  const a=Math.min(lvl,10), b=Math.min(Math.max(lvl-10,0),10), c=Math.max(lvl-20,0);
+  return Math.pow(1.12,a)*Math.pow(1.07,b)*Math.pow(1.04,c);
 }
 
-/* Корм → целочисленный вклад к тапу */
+/* Корм → вклад в тап (целые) */
 function tapAddFromFeed(){
-  const feed = FOOD_SECTIONS[0].items.find(i=>i.key==='base_feed');
-  const perLvl = (feed?.tapAddPerLvl)||1;
-  const lvl = getLevel('base_feed');
-  const raw = perLvl * effLevel(lvl);
-  return Math.floor(raw);
+  const per=(FOOD_SECTIONS[0].items.find(i=>i.key==='base_feed')?.tapAddPerLvl)||1;
+  return Math.floor(per * effLevel(getLevel('base_feed')));
 }
+/* Карточки → бонус к тапу */
+function cardsTapBonus(){ return CARDS.reduce((s,c)=>s+(isCardBought(c.key)?(c.tapBonus||0):0),0); }
 
-/* Карточки → суммарный бонус к тапу */
-function cardsTapBonus(){
-  let sum = 0;
-  for (const c of CARDS) if (isCardBought(c.key)) sum += (c.tapBonus||0);
-  return sum;
-}
-
-/* Доход за тап (база + корм + карточки) * вода */
-function perTap(){
-  const baseSum = base.tapBase + tapAddFromFeed() + cardsTapBonus();
-  const raw = baseSum * waterMult();
-  return Math.max(1, Math.floor(raw));
-}
-
-/* Пассивка → сумма по «hps» позициям * вода */
+/* Доходы */
+function perTap(){ return Math.max(1, Math.floor((base.tapBase + tapAddFromFeed() + cardsTapBonus())*waterMult())); }
 function totalHps(){
-  let total = 0;
-  for (const sec of FOOD_SECTIONS){
-    for (const it of sec.items){
-      if (it.type === 'hps'){
-        const lvl = getLevel(it.key);
-        const raw = itemHpsPerLvl(it) * effLevel(lvl);
-        total += Math.floor(raw);
-      }
-    }
+  let t=0;
+  for (const sec of FOOD_SECTIONS) for (const it of sec.items){
+    if (it.type==='hps'){ t += Math.floor(itemHpsPerLvl(it)*effLevel(getLevel(it.key))); }
   }
-  return Math.floor(total * waterMult());
+  return Math.floor(t*waterMult());
 }
 
-/* Offline кап: 2 часа */
-(function offlineGain(){
-  const now = Date.now();
-  const dt = Math.max(0, (now - (S.last||now))/1000);
-  const capped = Math.min(dt, 2*3600);
-  const gain = totalHps() * capped;
-  if (gain > 0) S.happy += gain;
-  S.last = now;
+/* Offline-доход (кап 2ч) */
+(function(){
+  const now=Date.now(), dt=Math.max(0,(now-(S.last||now))/1000), capped=Math.min(dt,2*3600);
+  const gain=totalHps()*capped; if (gain>0) S.RabbitCoin+=gain; S.last=now;
 })();
 
-/* ===== Рендер ЕДЫ ===== */
+/* ===== Рендер: ЕДА ===== */
 function makeFoodItemCard(item){
-  const lvl = getLevel(item.key);
-  const card = document.createElement('div');
-  card.className = 'card';
+  const card=document.createElement('div'); card.className='card';
+  const icon=document.createElement('div'); icon.className='icon-wrap';
+  const img=document.createElement('img'); img.src=item.icon; img.alt=item.name; icon.appendChild(img);
 
-  const icon = document.createElement('div');
-  icon.className = 'icon-wrap';
-  const img = document.createElement('img');
-  img.src = item.icon;
-  img.alt = item.name;
-  icon.appendChild(img);
+  const main=document.createElement('div'); main.className='c-main';
+  const title=document.createElement('div'); title.className='c-title';
+  title.innerHTML=`${item.name} <span class="lvl">ур. <span data-lvl="${item.key}">${getLevel(item.key)}</span></span>`;
 
-  const main = document.createElement('div');
-  main.className = 'c-main';
+  const sub=document.createElement('div'); sub.className='c-sub';
+  if (item.type==='hps'){
+    sub.textContent=`Доход: +${Math.floor(itemHpsPerLvl(item)*waterMult())} RabbitCoin/сек за ур.`;
+  }else if(item.type==='mult'){ sub.textContent='Вода: сильнее в начале, слабее позже';
+  }else{ sub.textContent=`Доход с тапа: +${Math.floor(((item.tapAddPerLvl||1)*waterMult()))} за ур. (с убывающей отдачей)`; }
 
-  const title = document.createElement('div');
-  title.className = 'c-title';
-  title.innerHTML = `${item.name} <span class="lvl">ур. <span data-lvl="${item.key}">${lvl}</span></span>`;
+  const row=document.createElement('div'); row.className='row';
+  const mini=document.createElement('div'); mini.className='mini'; mini.innerHTML=renderFoodMini(item);
+  const btn=document.createElement('button'); btn.className='buy'+(item.type==='mult'?' blue':''); btn.textContent='Купить'; btn.dataset.key=item.key;
 
-  const sub = document.createElement('div');
-  sub.className = 'c-sub';
-  if (item.type === 'hps'){
-    const inc = Math.floor(itemHpsPerLvl(item) * waterMult());
-    sub.textContent = `Пассивный доход: +${inc} Happy/сек за ур. (с убывающей отдачей)`;
-  } else if (item.type === 'mult'){
-    sub.textContent = `Вода: сильнее в начале, слабее позже`;
-  } else if (item.type === 'tap_add'){
-    const add = Math.floor(((item.tapAddPerLvl||1) * waterMult()));
-    sub.textContent = `Доход с тапа: +${add} за ур. (с убывающей отдачей)`;
-  }
-
-  const row = document.createElement('div');
-  row.className = 'row';
-
-  const mini = document.createElement('div');
-  mini.className = 'mini';
-  mini.innerHTML = renderFoodMini(item);
-
-  const btn = document.createElement('button');
-  btn.className = 'buy' + (item.type==='mult' ? ' blue' : '');
-  btn.textContent = 'Купить';
-  btn.dataset.key = item.key;
-
-  row.appendChild(mini);
-  row.appendChild(btn);
-
-  main.appendChild(title);
-  main.appendChild(sub);
-  main.appendChild(row);
-
-  card.appendChild(icon);
-  card.appendChild(main);
+  row.appendChild(mini); row.appendChild(btn);
+  main.appendChild(title); main.appendChild(sub); main.appendChild(row);
+  card.appendChild(icon); card.appendChild(main);
   return card;
 }
-
 function renderFoodMini(item){
-  const lvl = getLevel(item.key);
-  const price = nextPrice(item, lvl);
-  if (item.type === 'hps'){
-    const inc = Math.floor(itemHpsPerLvl(item) * waterMult());
-    return `+${inc}/сек за ур. • цена: 🟡 ${fmt(price)}`;
-  } else if (item.type === 'mult'){
-    const mult = waterMult();
-    const buff = (mult-1)*100;
-    return `баф сейчас: ${Math.floor(buff)}% • цена: 🟡 ${fmt(price)}`;
-  } else if (item.type === 'tap_add'){
-    const add = Math.floor(((item.tapAddPerLvl||1) * waterMult()));
-    return `+${add} за тап/ур. • цена: 🟡 ${fmt(price)}`;
-  }
-  return `цена: 🟡 ${fmt(price)}`;
+  const lvl=getLevel(item.key), price=nextPrice(item,lvl);
+  if (item.type==='hps'){ return `+${Math.floor(itemHpsPerLvl(item)*waterMult())}/сек за ур. • цена: 🟡 ${fmt(price)}`; }
+  if (item.type==='mult'){ const buff=(waterMult()-1)*100; return `баф сейчас: ${Math.floor(buff)}% • цена: 🟡 ${fmt(price)}`; }
+  return `+${Math.floor(((item.tapAddPerLvl||1)*waterMult()))} за тап/ур. • цена: 🟡 ${fmt(price)}`;
 }
-
 function renderFood(){
-  els.foodRoot.innerHTML = '';
-  // рисуем все подразделы внутри вкладки "Еда"
+  els.foodRoot.innerHTML='';
   for (const sec of FOOD_SECTIONS){
-    const box = document.createElement('div');
-    box.className = 'section';
-    const h = document.createElement('h3');
-    h.textContent = sec.title;
-    box.appendChild(h);
-
-    const container = document.createElement('div');
-    container.className = 'store';
-    for (const it of sec.items){
-      container.appendChild( makeFoodItemCard(it) );
-    }
-    box.appendChild(container);
-    els.foodRoot.appendChild(box);
+    const box=document.createElement('div'); box.className='section';
+    const h=document.createElement('h3'); h.textContent=sec.title; box.appendChild(h);
+    const container=document.createElement('div'); container.className='store';
+    for (const it of sec.items){ container.appendChild(makeFoodItemCard(it)); }
+    box.appendChild(container); els.foodRoot.appendChild(box);
   }
-
-  // обработчики покупки
   els.foodRoot.querySelectorAll('.buy').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const key = btn.dataset.key;
-      let item = null;
-      for (const sec of FOOD_SECTIONS){ item = sec.items.find(i=>i.key===key) || item; }
+      const key=btn.dataset.key;
+      let item=null; for (const sec of FOOD_SECTIONS){ item = sec.items.find(i=>i.key===key) || item; }
       if (!item) return;
-      const lvl = getLevel(key);
-      const price = nextPrice(item, lvl);
-      if (S.happy >= price){
-        S.happy -= price;
-        setLevel(key, lvl+1);
-        haptic('medium');
-        updateUI(); save();
-      }
+      const lvl=getLevel(key), price=nextPrice(item,lvl);
+      if (S.RabbitCoin>=price){ S.RabbitCoin-=price; setLevel(key,lvl+1); haptic('medium'); updateUI(); save(); }
     });
   });
 }
 
-/* ===== Рендер КАРТОЧЕК ===== */
+/* ===== Рендер: КАРТОЧКИ ===== */
 function renderCards(){
-  els.cardsRoot.innerHTML = '';
+  els.cardsRoot.innerHTML='';
   for (const c of CARDS){
-    const card = document.createElement('div');
-    card.className = 'kcard';
-
-    const pic = document.createElement('div');
-    pic.className = 'pic';
-    const img = document.createElement('img');
-    img.src = c.icon;
-    img.alt = c.name;
-    pic.appendChild(img);
-
-    const body = document.createElement('div');
-    body.className = 'body';
-
-    const title = document.createElement('div');
-    title.className = 'title';
-    title.textContent = c.name;
-
-    const desc = document.createElement('div');
-    desc.className = 'desc';
-    desc.textContent = c.desc;
-
-    const row = document.createElement('div');
-    row.className = 'row';
-
-    const mini = document.createElement('div');
-    mini.className = 'mini';
-    mini.innerHTML = `+${c.tapBonus} за тап • цена: 🟡 ${fmt(c.cost)}`;
-
-    const btn = document.createElement('button');
-    btn.className = 'buy';
-    btn.textContent = isCardBought(c.key) ? 'Куплено' : 'Купить';
-    btn.disabled = isCardBought(c.key);
-    btn.dataset.key = c.key;
-
-    row.appendChild(mini);
-    row.appendChild(btn);
-
-    body.appendChild(title);
-    body.appendChild(desc);
-    body.appendChild(row);
-
-    card.appendChild(pic);
-    card.appendChild(body);
-    els.cardsRoot.appendChild(card);
+    const node=document.createElement('div'); node.className='kcard';
+    const pic=document.createElement('div'); pic.className='pic';
+    const img=document.createElement('img'); img.src=c.icon; img.alt=c.name; pic.appendChild(img);
+    const body=document.createElement('div'); body.className='body';
+    const title=document.createElement('div'); title.className='title'; title.textContent=c.name;
+    const desc=document.createElement('div'); desc.className='desc'; desc.textContent=c.desc;
+    const row=document.createElement('div'); row.className='row';
+    const mini=document.createElement('div'); mini.className='mini'; mini.innerHTML=`+${c.tapBonus} за тап • цена: 🟡 ${fmt(c.cost)}`;
+    const btn=document.createElement('button'); btn.className='buy'; btn.dataset.key=c.key;
+    const bought=isCardBought(c.key); btn.textContent=bought?'Куплено':'Купить'; btn.disabled=bought;
+    row.appendChild(mini); row.appendChild(btn);
+    body.appendChild(title); body.appendChild(desc); body.appendChild(row);
+    node.appendChild(pic); node.appendChild(body);
+    if (bought) node.classList.add('bought');
+    els.cardsRoot.appendChild(node);
   }
-
-  // покупка карточек
   els.cardsRoot.querySelectorAll('.buy').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const key = btn.dataset.key;
-      const c = CARDS.find(x=>x.key===key);
-      if (!c) return;
-      if (isCardBought(key)) return;
-      if (S.happy >= c.cost){
-        S.happy -= c.cost;
-        setCardBought(key, true);
-        haptic('medium');
-        updateUI(); save();
-      }
+      const key=btn.dataset.key, c=CARDS.find(x=>x.key===key); if (!c||isCardBought(key)) return;
+      if (S.RabbitCoin>=c.cost){ S.RabbitCoin-=c.cost; setCardBought(key,true); haptic('medium'); updateUI(); save(); }
     });
   });
 }
 
 /* ===== Tabs ===== */
 function setActiveTab(name){
-  const isFood = name === 'food';
-  els.tabFood.classList.toggle('active', isFood);
-  els.tabCards.classList.toggle('active', !isFood);
-  els.viewFood.classList.toggle('active', isFood);
-  els.viewCards.classList.toggle('active', !isFood);
-  localStorage.setItem('rc_active_tab2', isFood ? 'food' : 'cards');
+  const isFood = name==='food';
+  els.tabFood.classList.toggle('active',isFood);
+  els.tabCards.classList.toggle('active',!isFood);
+  els.viewFood.classList.toggle('active',isFood);
+  els.viewCards.classList.toggle('active',!isFood);
+  localStorage.setItem('rc_active_tab2', isFood?'food':'cards');
 }
-els.tabFood.addEventListener('click', ()=> setActiveTab('food'));
-els.tabCards.addEventListener('click', ()=> setActiveTab('cards'));
+els.tabFood.addEventListener('click',()=>setActiveTab('food'));
+els.tabCards.addEventListener('click',()=>setActiveTab('cards'));
 
-/* ===== Основной рендер ===== */
+/* ===== UI обновления ===== */
 function updateHeader(){
-  els.balance.textContent = fmt(S.happy);
-  els.hps.textContent = totalHps();         // целое
-  els.perTap.textContent = perTap();        // целое
+  els.balance.textContent = fmt(S.RabbitCoin);
+  els.hps.textContent = totalHps();
+  els.perTap.textContent = perTap();
   els.waterBuff.textContent = Math.floor((waterMult()-1)*100);
 }
 function updateFoodRows(){
-  // уровни
   for (const sec of FOOD_SECTIONS) for (const it of sec.items){
-    const sp = document.querySelector(`[data-lvl="${it.key}"]`);
-    if (sp) sp.textContent = getLevel(it.key);
+    const sp=document.querySelector(`[data-lvl="${it.key}"]`); if (sp) sp.textContent=getLevel(it.key);
   }
-  // мини и доступность
   for (const sec of FOOD_SECTIONS) for (const it of sec.items){
-    const cards = Array.from(els.foodRoot.querySelectorAll('.card'));
-    const card = cards.find(c=>{
-      const t = c.querySelector('.c-title')?.textContent||'';
-      return t.includes(it.name);
-    });
+    const cards=[...els.foodRoot.querySelectorAll('.card')];
+    const card=cards.find(c=> (c.querySelector('.c-title')?.textContent||'').includes(it.name));
     if (!card) continue;
-    const mini = card.querySelector('.mini');
-    if (mini) mini.innerHTML = renderFoodMini(it);
-    const btn = card.querySelector('.buy');
-    if (btn){
-      const price = nextPrice(it, getLevel(it.key));
-      btn.disabled = S.happy < price;
-    }
+    const mini=card.querySelector('.mini'); if (mini) mini.innerHTML=renderFoodMini(it);
+    const btn=card.querySelector('.buy'); if (btn){ const price=nextPrice(it,getLevel(it.key)); btn.disabled=S.RabbitCoin<price; }
   }
 }
 function updateCardsRows(){
-  els.cardsRoot.querySelectorAll('.kcard').forEach((node, idx)=>{
-    const c = CARDS[idx];
-    const btn = node.querySelector('.buy');
-    const mini = node.querySelector('.mini');
-    if (mini) mini.innerHTML = `+${c.tapBonus} за тап • цена: 🟡 ${fmt(c.cost)}`;
-    if (btn){
-      const bought = isCardBought(c.key);
-      btn.textContent = bought ? 'Куплено' : 'Купить';
-      btn.disabled = bought || S.happy < c.cost;
-      node.classList.toggle('bought', bought);
-    }
+  els.cardsRoot.querySelectorAll('.kcard').forEach((node,idx)=>{
+    const c=CARDS[idx], btn=node.querySelector('.buy'), mini=node.querySelector('.mini');
+    const bought=isCardBought(c.key);
+    if (mini) mini.innerHTML=`+${c.tapBonus} за тап • цена: 🟡 ${fmt(c.cost)}`;
+    if (btn){ btn.textContent=bought?'Куплено':'Купить'; btn.disabled=bought || S.RabbitCoin<c.cost; }
+    node.classList.toggle('bought', bought);
   });
 }
-function updateUI(){
-  updateHeader();
-  updateFoodRows();
-  updateCardsRows();
-}
+function updateUI(){ updateHeader(); updateFoodRows(); updateCardsRows(); }
 
 /* ===== Тик ===== */
-let acc = 0, lastTs = performance.now();
+let acc=0, lastTs=performance.now();
 function loop(ts){
-  const dt = (ts - lastTs)/1000; lastTs = ts;
-  acc += dt;
-  const step = 0.1;
-  while (acc >= step){
-    S.happy += totalHps() * step;
-    acc -= step;
-  }
-  if (Math.random() < 0.02){ S.last = Date.now(); save(); }
+  const dt=(ts-lastTs)/1000; lastTs=ts; acc+=dt;
+  const step=0.1;
+  while(acc>=step){ S.RabbitCoin += totalHps()*step; acc-=step; }
+  if (Math.random()<0.02){ S.last=Date.now(); save(); }
   updateUI();
   requestAnimationFrame(loop);
 }
 
 /* ===== События ===== */
 els.tapBtn.addEventListener('click', ()=>{
-  const gain = perTap();
-  S.happy += gain;
-  popText(els.tapBtn, `+${gain}`);
-  haptic('light');
-  updateUI();
-});
-
-els.reset.addEventListener('click', ()=>{
-  if (!confirm('Точно сбросить прогресс?')) return;
-  S = makeFreshState();
-  save();
-  renderFood();
-  renderCards();
-  updateUI();
+  const gain=perTap(); S.RabbitCoin+=gain; popText(els.tapBtn, `+${gain}`); haptic('light'); updateUI();
 });
 
 /* Всплывашка */
 function popText(anchorEl, text){
-  const r = anchorEl.getBoundingClientRect();
-  const b = document.createElement('div');
-  b.textContent = text;
+  const r=anchorEl.getBoundingClientRect();
+  const b=document.createElement('div');
+  b.textContent=text;
   b.style.position='fixed';
-  b.style.left = (r.left + r.width/2) + 'px';
-  b.style.top  = (r.top + r.height/2) + 'px';
+  b.style.left=(r.left+r.width/2)+'px';
+  b.style.top=(r.top+r.height/2)+'px';
   b.style.transform='translate(-50%,-50%)';
   b.style.pointerEvents='none';
   b.style.color='#fff';
-  b.style.textShadow='0 2px 10px rgba(0,0,0,.6)';
+  b.style.textShadow = '0 2px 10px rgba(0,0,0,.6)'; /* фикс */
   b.style.fontWeight='700';
   b.style.transition='all .6s ease';
   document.body.appendChild(b);
-  requestAnimationFrame(()=>{
-    b.style.top = (r.top - 30) + 'px';
-    b.style.opacity = '0';
-    b.style.scale = '1.2';
-  });
+  requestAnimationFrame(()=>{ b.style.top=(r.top-30)+'px'; b.style.opacity='0'; b.style.scale='1.2'; });
   setTimeout(()=> b.remove(), 650);
 }
 
@@ -636,8 +543,7 @@ function popText(anchorEl, text){
 renderFood();
 renderCards();
 updateUI();
-const savedTab = localStorage.getItem('rc_active_tab2');
-setActiveTab(savedTab === 'cards' ? 'cards' : 'food');
+setActiveTab(localStorage.getItem('rc_active_tab2')==='cards'?'cards':'food');
 requestAnimationFrame(loop);
 </script>
 </body>
